@@ -1,0 +1,29 @@
+services:
+  afina-bot:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: afina-bot
+    restart: unless-stopped
+    env_file:
+      - .env
+    environment:
+      - MODE=backend
+      - PORT=3000
+    volumes:
+      - ./data:/app/data
+    ports:
+      - "127.0.0.1:3001:3000"
+    # Если OpenClaw тоже в Docker на этом же VPS,
+    # раскомментируйте external network ниже:
+    # networks:
+    #   - openclaw-network
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+# networks:
+#   openclaw-network:
+#     external: true

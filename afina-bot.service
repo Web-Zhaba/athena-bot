@@ -1,0 +1,21 @@
+[Unit]
+Description=Afina Telegram Bot
+After=network.target
+
+[Service]
+Type=simple
+User=afina
+WorkingDirectory=/opt/afina-bot
+ExecStart=/usr/bin/node dist/index.js
+Restart=on-failure
+RestartSec=5
+Environment="NODE_ENV=production"
+Environment="TZ=Europe/Moscow"
+EnvironmentFile=/opt/afina-bot/.env
+
+# Логи
+StandardOutput=append:/var/log/afina-bot.log
+StandardError=append:/var/log/afina-bot.log
+
+[Install]
+WantedBy=multi-user.target
