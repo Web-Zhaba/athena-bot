@@ -17,7 +17,6 @@ import {
 } from './services/calendar';
 import { getProfilesCount } from './services/supabase';
 import { getGa4Stats } from './services/ga4';
-import { getCloudflareStats } from './services/cloudflare';
 import { morningDigest } from './jobs/morningDigest';
 
 export function createApi(bot: Telegraf) {
@@ -129,10 +128,9 @@ export function createApi(bot: Telegraf) {
       const results = await Promise.allSettled([
         getProfilesCount(),
         getGa4Stats(),
-        getCloudflareStats(),
       ]);
 
-      const [supabaseResult, ga4Result, cfResult] = results;
+      const [supabaseResult, ga4Result] = results;
       const data: any = {};
 
       if (supabaseResult.status === 'fulfilled') {
@@ -146,9 +144,6 @@ export function createApi(bot: Telegraf) {
 
       if (ga4Result.status === 'fulfilled' && ga4Result.value) {
         data.ga4 = ga4Result.value;
-      }
-      if (cfResult.status === 'fulfilled' && cfResult.value) {
-        data.cloudflare = cfResult.value;
       }
 
       res.json({ success: true, data });

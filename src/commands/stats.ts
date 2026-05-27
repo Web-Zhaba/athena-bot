@@ -1,7 +1,6 @@
 import { Context, Markup, Telegraf } from 'telegraf';
 import { getProfilesCount } from '../services/supabase';
 import { getGa4Stats } from '../services/ga4';
-import { getCloudflareStats } from '../services/cloudflare';
 import { getSystemMetrics } from '../services/system';
 import { getDailyBusinessDigest } from '../services/analyst';
 
@@ -33,21 +32,7 @@ const STATS_PAGES: StatsPage[] = [
              `🚀 *Сессии:* ${ga4.sessions}`;
     }
   },
-  {
-    id: 'cloudflare',
-    label: 'Cloudflare Stats',
-    emoji: '☁️',
-    getData: async () => {
-      const cf = await getCloudflareStats();
-      if (!cf) {
-        return '☁️ *Cloudflare Stats*\n\n❌ Данные недоступны. Проверьте CLOUDFLARE_ZONE_ID и токены в .env.';
-      }
-      return `☁️ *Cloudflare Stats (Сегодня)*\n\n` +
-             `👤 *Уникальные посетители:* ${cf.uniques}\n` +
-             `📄 *Просмотры страниц:* ${cf.pageViews}\n` +
-             `🔁 *Всего запросов:* ${cf.requests}`;
-    }
-  },
+
   {
     id: 'supabase',
     label: 'Supabase Users',
@@ -94,37 +79,32 @@ const STATS_PAGES: StatsPage[] = [
  * Генерирует текст главного меню статистики с быстрой сводкой
  */
 async function getMainMenuText(): Promise<string> {
-  const [sb, ga4, cf, vps] = await Promise.allSettled([
+  const [sb, ga4, vps] = await Promise.allSettled([
     getProfilesCount(),
     getGa4Stats(),
-    getCloudflareStats(),
     getSystemMetrics()
   ]);
 
+  const [sbResult, ga4Result, vpsResult] = [sb, ga4, vps];
+
   let text = `📊 *Панель управления Athena*\n\n`;
 
-  if (sb.status === 'fulfilled') {
-    const { count, delta } = sb.value;
+  if (sbResult.status === 'fulfilled') {
+    const { count, delta } = sbResult.value;
     const sign = delta! >= 0 ? '+' : '';
     text += `👥 *Пользователей:* ${count} (${sign}${delta} за сутки)\n`;
   } else {
     text += `👥 *Пользователей:* ⚠️ Ошибка загрузки\n`;
   }
 
-  if (ga4.status === 'fulfilled' && ga4.value) {
-    text += `📊 *GA4 сегодня:* 👤 ${ga4.value.activeUsers} | 📄 ${ga4.value.pageViews}\n`;
+  if (ga4Result.status === 'fulfilled' && ga4Result.value) {
+    text += `📊 *GA4 сегодня:* 👤 ${ga4Result.value.activeUsers} | 📄 ${ga4Result.value.pageViews}\n`;
   } else {
     text += `📊 *GA4 сегодня:* ⚠️ Ошибка GA4\n`;
   }
 
-  if (cf.status === 'fulfilled' && cf.value) {
-    text += `☁️ *Cloudflare:* 👤 ${cf.value.uniques} | 📄 ${cf.value.pageViews}\n`;
-  } else {
-    text += `☁️ *Cloudflare:* ⚠️ Ошибка Cloudflare\n`;
-  }
-
-  if (vps.status === 'fulfilled') {
-    const v = vps.value;
+  if (vpsResult.status === 'fulfilled') {
+    const v = vpsResult.value;
     text += `🖥️ *VPS Сервер:* 🧠 RAM: ${v.ramPercentage}% | 💾 SSD: ${v.diskUsedPercentage}%\n`;
   } else {
     text += `🖥️ *VPS Сервер:* ⚠️ Ошибка сбора метрик\n`;

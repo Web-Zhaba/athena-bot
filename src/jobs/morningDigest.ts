@@ -11,7 +11,6 @@ import {
 } from '../services/calendar';
 import { getProfilesCount } from '../services/supabase';
 import { getGa4Stats } from '../services/ga4';
-import { getCloudflareStats } from '../services/cloudflare';
 import { getSystemMetrics } from '../services/system';
 import { getUptimeReport } from '../services/uptime';
 import { getDailyBusinessDigest } from '../services/analyst';
@@ -35,7 +34,6 @@ export async function morningDigest(telegram: Telegram) {
     getTomorrowEvents(),
     getProfilesCount(),
     getGa4Stats(),
-    getCloudflareStats(),
     getSystemMetrics(),
     getDailyBusinessDigest(),
   ]);
@@ -46,7 +44,6 @@ export async function morningDigest(telegram: Telegram) {
     tomorrowResult,
     supabaseResult,
     ga4Result,
-    cfResult,
     vpsResult,
     businessResult,
   ] = results;
@@ -139,17 +136,10 @@ export async function morningDigest(telegram: Telegram) {
     console.error('Digest GA4 error:', ga4Result.reason);
   }
 
-  if (cfResult.status === 'fulfilled' && cfResult.value) {
-    const s = cfResult.value;
-    analyticsParts.push(`☁️ Cloudflare: 👤${s.uniques} уникальных, 📄${s.pageViews} просмотров`);
-  } else if (cfResult.status === 'rejected') {
-    console.error('Digest Cloudflare error:', cfResult.reason);
-  }
-
   if (analyticsParts.length > 0) {
     message += `─── Аналитика сайта ───\n` + analyticsParts.join('\n');
   } else {
-    message += `─── Аналитика сайта ───\nℹ️ Данные недоступны. Настройте GA4 или Cloudflare.`;
+    message += `─── Аналитика сайта ───\nℹ️ Данные недоступны. Настройте GA4.`;
   }
 
   // 5.1. Business AI Analyst Report

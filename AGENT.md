@@ -9,11 +9,11 @@
 ## 🤖 Athena Bot Architecture (My Codebase)
 - **Mode:** Standalone Telegram polling + Express API server (port 3000)
 - **Core Jobs:** 
-  - Weather + Google Calendar alerts (Morning digest at 08:00 with integrated yesterday's yesterday AI Business Analysis)
-  - Interactive `/stats` dashboard (Config-driven dynamic grid with GA4, Supabase, Cloudflare, VPS status, and custom Brain AI Business analysis)
+  - Weather + Google Calendar alerts (Morning digest at 08:00 with integrated yesterday's AI Business Analysis)
+  - Interactive `/stats` dashboard (Config-driven dynamic grid with GA4, Supabase, VPS status, and custom Brain AI Business analysis)
   - Uptime site checker (5m cron, persistent states, alerts only on UP/DOWN transitions with downtime metrics)
   - Silent backup monitor webhook (`POST /api/webhooks/backup`, zero spam: 100% quiet on success, alerts immediately on error or if missed >26h)
-  - Local JSON transaction database (persisted rolling log of last 100 payments inside store.json for business cohort and conversion rate reviews)
+  - Local JSON transaction database (persisted rolling log of last 100 payments inside payments.json for business cohort and conversion rate reviews)
   - Lightweight Zero-dependency AI system using native `fetch` supporting Groq Llama-3 (default, no proxy needed), OpenRouter (free models), and Gemini (via Cloudflare worker proxy)
 
 ## 📦 Project "Nodes" (My SaaS Dashboard)

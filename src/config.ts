@@ -29,10 +29,8 @@ const envSchema = z.object({
   GEMINI_API_KEY: z.string().optional(),
   GEMINI_API_BASE_URL: z.string().optional(),
   GROQ_API_KEY: z.string().optional(),
+  GROQ_API_BASE_URL: z.string().optional(),
   OPENROUTER_API_KEY: z.string().optional(),
-
-  CF_API_TOKEN: z.string().optional(),
-  CF_ZONE_ID: z.string().optional(),
 
   MONITORED_URLS: z.string().optional(),
 

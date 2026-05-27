@@ -4,7 +4,8 @@ import { config } from '../config';
 
 /**
  * Отправляет запрос в выбранный ИИ-сервис на основе доступных API ключей в .env.
- * Использует нативный fetch, благодаря чему весит 0 байт и поддерживает проксирование.
+ * В случае сбоя или геоблокировки (например, HTTP 403 в РФ для Groq) автоматически
+ * переключается на резервных провайдеров в порядке: Groq -> OpenRouter -> Gemini (proxy).
  */
 export async function askGemini(prompt: string): Promise<string> {
   let systemInstruction = 
@@ -14,7 +15,6 @@ export async function askGemini(prompt: string): Promise<string> {
     'Для оформления кода обязательно используй Markdown.';
 
   // Динамически загружаем контекст из AGENT.md, если файл существует.
-  // Чтение на каждом запросе позволяет редактировать контекст "на лету" без перезапуска бота!
   try {
     const agentPath = path.join(process.cwd(), 'AGENT.md');
     if (fs.existsSync(agentPath)) {
@@ -25,17 +25,19 @@ export async function askGemini(prompt: string): Promise<string> {
     console.error('Failed to load AGENT.md:', err);
   }
 
-  // 1. РЕЖИМ GROQ (Ультрабыстрый, работает из РФ напрямую без прокси)
+  // --- ПОПЫТКА 1: GROQ ---
   if (config.GROQ_API_KEY) {
     try {
-      const response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+      const baseUrl = config.GROQ_API_BASE_URL || 'https://api.groq.com';
+      const url = `${baseUrl.replace(/\/$/, '')}/openai/v1/chat/completions`;
+      const response = await fetch(url, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${config.GROQ_API_KEY}`
         },
         body: JSON.stringify({
-          model: 'llama3-8b-8192', // Бесплатная, умная и молниеносная модель
+          model: 'llama3-8b-8192',
           messages: [
             { role: 'system', content: systemInstruction },
             { role: 'user', content: prompt }
@@ -49,26 +51,30 @@ export async function askGemini(prompt: string): Promise<string> {
       }
 
       const data = await response.json() as any;
-      return data.choices?.[0]?.message?.content || '❌ Пустой ответ от Groq.';
+      const content = data.choices?.[0]?.message?.content;
+      if (content) {
+        console.log('[AI Engine] Successfully generated response via Groq.');
+        return content;
+      }
     } catch (err: any) {
-      console.error('Groq API Error:', err);
-      return `❌ Ошибка Groq API: ${err.message || 'Неизвестная ошибка'}`;
+      console.warn(`[AI Engine] Groq failed, attempting fallback. Error: ${err.message || err}`);
     }
   }
 
-  // 2. РЕЖИМ OPENROUTER (Бесплатные модели Llama/Gemma, работает из РФ напрямую без прокси)
+  // --- ПОПЫТКА 2: OPENROUTER ---
   if (config.OPENROUTER_API_KEY) {
     try {
+      console.log('[AI Engine] Attempting generation via OpenRouter...');
       const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${config.OPENROUTER_API_KEY}`,
-          'HTTP-Referer': 'https://github.com/athena-bot', // Обязательные заголовки для OpenRouter
+          'HTTP-Referer': 'https://github.com/athena-bot',
           'X-Title': 'Athena Bot'
         },
         body: JSON.stringify({
-          model: 'meta-llama/llama-3-8b-instruct:free', // 100% бесплатная умная модель
+          model: 'meta-llama/llama-3-8b-instruct:free',
           messages: [
             { role: 'system', content: systemInstruction },
             { role: 'user', content: prompt }
@@ -81,17 +87,20 @@ export async function askGemini(prompt: string): Promise<string> {
       }
 
       const data = await response.json() as any;
-      return data.choices?.[0]?.message?.content || '❌ Пустой ответ от OpenRouter.';
+      const content = data.choices?.[0]?.message?.content;
+      if (content) {
+        console.log('[AI Engine] Successfully generated response via OpenRouter.');
+        return content;
+      }
     } catch (err: any) {
-      console.error('OpenRouter API Error:', err);
-      return `❌ Ошибка OpenRouter API: ${err.message || 'Неизвестная ошибка'}`;
+      console.warn(`[AI Engine] OpenRouter failed, attempting fallback. Error: ${err.message || err}`);
     }
   }
 
-  // 3. РЕЖИМ GOOGLE GEMINI (Через Cloudflare-прокси или напрямую)
+  // --- ПОПЫТКА 3: GOOGLE GEMINI (Через твой Cloudflare прокси) ---
   if (config.GEMINI_API_KEY) {
     try {
-      // Если бот на сервере в РФ, используем Cloudflare Worker Proxy URL, заданный в .env
+      console.log('[AI Engine] Attempting generation via Gemini (Proxy)...');
       const baseUrl = config.GEMINI_API_BASE_URL || 'https://generativelanguage.googleapis.com';
       const url = `${baseUrl.replace(/\/$/, '')}/v1beta/models/gemini-1.5-flash:generateContent?key=${config.GEMINI_API_KEY}`;
 
@@ -115,12 +124,15 @@ export async function askGemini(prompt: string): Promise<string> {
       }
 
       const data = await response.json() as any;
-      return data.candidates?.[0]?.content?.parts?.[0]?.text || '❌ Пустой ответ от Gemini.';
+      const content = data.candidates?.[0]?.content?.parts?.[0]?.text;
+      if (content) {
+        console.log('[AI Engine] Successfully generated response via Gemini.');
+        return content;
+      }
     } catch (err: any) {
-      console.error('Gemini API Error:', err);
-      return `❌ Ошибка Gemini API: ${err.message || 'Неизвестная ошибка API'}`;
+      console.error(`[AI Engine] Gemini proxy failed as well. Error: ${err.message || err}`);
     }
   }
 
-  return '⚠️ Функция ИИ отключена. Пожалуйста, укажите GROQ_API_KEY, OPENROUTER_API_KEY или GEMINI_API_KEY в файле .env.';
+  return '❌ Все ИИ-провайдеры (Groq, OpenRouter, Gemini) завершились с ошибкой или не были настроены. Пожалуйста, проверьте логи сервера и ключи в .env.';
 }
