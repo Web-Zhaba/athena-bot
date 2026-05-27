@@ -9,7 +9,6 @@ import {
   getTomorrowEvents,
   formatEvents,
 } from '../services/calendar';
-import { getVercelStats, formatVercelStats } from '../services/vercel';
 import { getProfilesCount } from '../services/supabase';
 import { getGa4Stats } from '../services/ga4';
 import { getCloudflareStats } from '../services/cloudflare';
@@ -31,7 +30,6 @@ export async function morningDigest(telegram: Telegram) {
     getWeather(store.get('defaultCity')),
     getTodayEvents(),
     getTomorrowEvents(),
-    getVercelStats(),
     getProfilesCount(),
     getGa4Stats(),
     getCloudflareStats(),
@@ -41,7 +39,6 @@ export async function morningDigest(telegram: Telegram) {
     weatherResult,
     todayResult,
     tomorrowResult,
-    vercelResult,
     supabaseResult,
     ga4Result,
     cfResult,
@@ -82,13 +79,7 @@ export async function morningDigest(telegram: Telegram) {
     }
   }
 
-  // 3. Vercel
-  if (vercelResult.status === 'fulfilled') {
-    message += `─── Проект ───\n${formatVercelStats(vercelResult.value)}\n\n`;
-  } else {
-    console.error('Digest vercel error:', vercelResult.reason);
-    message += `─── Проект ───\n❌ Не удалось получить статус Vercel\n\n`;
-  }
+
 
   // 4. Supabase
   if (supabaseResult.status === 'fulfilled') {

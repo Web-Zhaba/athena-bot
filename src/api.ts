@@ -14,7 +14,6 @@ import {
   getEventsForDate,
   formatEvents,
 } from './services/calendar';
-import { getVercelStats, formatVercelStats } from './services/vercel';
 import { getProfilesCount } from './services/supabase';
 import { getGa4Stats } from './services/ga4';
 import { getCloudflareStats } from './services/cloudflare';
@@ -127,23 +126,13 @@ export function createApi(bot: Telegraf) {
   app.get('/api/stats', async (_req: Request, res: Response) => {
     try {
       const results = await Promise.allSettled([
-        getVercelStats(),
         getProfilesCount(),
         getGa4Stats(),
         getCloudflareStats(),
       ]);
 
-      const [vercelResult, supabaseResult, ga4Result, cfResult] = results;
+      const [supabaseResult, ga4Result, cfResult] = results;
       const data: any = {};
-
-      if (vercelResult.status === 'fulfilled') {
-        data.vercel = {
-          text: formatVercelStats(vercelResult.value),
-          raw: vercelResult.value,
-        };
-      } else {
-        data.vercel = { error: 'Не удалось получить статус Vercel' };
-      }
 
       if (supabaseResult.status === 'fulfilled') {
         data.supabase = {

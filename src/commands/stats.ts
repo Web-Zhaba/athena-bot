@@ -1,5 +1,4 @@
 import { Context } from 'telegraf';
-import { getVercelStats, formatVercelStats } from '../services/vercel';
 import { getProfilesCount } from '../services/supabase';
 import { getGa4Stats } from '../services/ga4';
 import { getCloudflareStats } from '../services/cloudflare';
@@ -7,24 +6,14 @@ import { getCloudflareStats } from '../services/cloudflare';
 export async function statsCommand(ctx: Context) {
   try {
     const results = await Promise.allSettled([
-      getVercelStats(),
       getProfilesCount(),
       getGa4Stats(),
       getCloudflareStats(),
     ]);
 
-    const [vercelResult, supabaseResult, ga4Result, cfResult] = results;
+    const [supabaseResult, ga4Result, cfResult] = results;
 
     let message = '';
-
-    if (vercelResult.status === 'fulfilled') {
-      message += formatVercelStats(vercelResult.value);
-    } else {
-      console.error('Vercel stats error:', vercelResult.reason);
-      message += '⚠️ Не удалось получить статус Vercel';
-    }
-
-    message += '\n\n';
 
     if (supabaseResult.status === 'fulfilled') {
       const { count, delta } = supabaseResult.value;

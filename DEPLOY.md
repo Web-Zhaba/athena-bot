@@ -3,7 +3,7 @@
 ## Архитектура
 
 - **OpenClaw Gateway** — единственный процесс, который получает сообщения из Telegram (polling/webhook). Он же отвечает на вопросы как AI-ассистент.
-- **Afina (backend mode)** — фоновый сервис: cron-дайджесты + HTTP API. Она отправляет сообщения через Telegram Bot API, но **не слушает** updates (не делает polling).
+- **Athena (backend mode)** — фоновый сервис: cron-дайджесты + HTTP API. Она отправляет сообщения через Telegram Bot API, но **не слушает** updates (не делает polling).
 
 Это позволяет использовать **один BOT_TOKEN** для обоих сервисов без конфликтов.
 
@@ -24,11 +24,11 @@ docker compose version
 
 ```bash
 # На локальной машине:
-scp -r . user@your-vps-ip:/opt/afina-bot
+scp -r . user@your-vps-ip:/opt/athena-bot
 
 # На VPS:
 ssh user@your-vps-ip
-cd /opt/afina-bot
+cd /opt/athena-bot
 ```
 
 ---
@@ -66,7 +66,7 @@ SUPABASE_SERVICE_KEY=...
 ## 4. Запуск Афины
 
 ```bash
-cd /opt/afina-bot
+cd /opt/athena-bot
 docker compose up -d --build
 ```
 
@@ -83,7 +83,7 @@ curl http://localhost:3001/health
 
 Логи:
 ```bash
-docker compose logs -f afina-bot
+docker compose logs -f athena-bot
 ```
 
 ---
@@ -121,7 +121,7 @@ docker compose up -d
 ```
 
 В настройках OpenClaw (где он вызывает API Афины) используйте:
-- `http://afina-bot:3000/api/...` (если в одной Docker-сети)
+- `http://athena-bot:3000/api/...` (если в одной Docker-сети)
 - `http://host.docker.internal:3001/api/...` (Docker Desktop)
 - `http://<vps-ip>:3001/api/...` (если порт открыт)
 
@@ -167,11 +167,11 @@ curl -s -X POST "http://localhost:3001/api/setcity" \
 Создайте файл на VPS в workspace OpenClaw:
 
 ```bash
-mkdir -p ~/.openclaw/workspace/skills/afina
-cat > ~/.openclaw/workspace/skills/afina/SKILL.md << 'EOF'
-# Afina Integration Skill
+mkdir -p ~/.openclaw/workspace/skills/athena
+cat > ~/.openclaw/workspace/skills/athena/SKILL.md << 'EOF'
+# Athena Integration Skill
 
-Whenever the user asks for weather, calendar, stats, or digest, use the Afina backend API running at http://localhost:3001.
+Whenever the user asks for weather, calendar, stats, or digest, use the Athena backend API running at http://localhost:3001.
 
 ## Tools
 - bash: use `curl -s http://localhost:3001/api/...` to fetch data
@@ -203,7 +203,7 @@ EOF
 1. **Порт API** (`3001`) должен быть доступен только локально (`127.0.0.1:3001`). Не открывайте его наружу без reverse proxy и авторизации.
 2. **`.env`**: установите права:
    ```bash
-   chmod 600 /opt/afina-bot/.env
+   chmod 600 /opt/athena-bot/.env
    ```
 3. **Firewall**: убедитесь, что порт 3001 закрыт извне:
    ```bash
@@ -215,7 +215,7 @@ EOF
 ## 9. Обновление
 
 ```bash
-cd /opt/afina-bot
+cd /opt/athena-bot
 git pull  # или scp новые файлы заново
 docker compose up -d --build
 ```
@@ -237,7 +237,7 @@ docker compose up -d
 ### OpenClaw не видит API Афины
 Проверьте доступность из контейнера OpenClaw:
 ```bash
-docker exec -it <openclaw-container> curl http://afina-bot:3000/health
+docker exec -it <openclaw-container> curl http://athena-bot:3000/health
 ```
 
 ---
@@ -249,10 +249,10 @@ docker exec -it <openclaw-container> curl http://afina-bot:3000/health
 docker compose ps
 
 # Логи
-docker compose logs -f afina-bot
+docker compose logs -f athena-bot
 
 # Перезапуск
-docker compose restart afina-bot
+docker compose restart athena-bot
 
 # Остановка
 docker compose down

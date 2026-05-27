@@ -45,7 +45,7 @@ if (IS_STANDALONE) {
 // --- HTTP API (всегда) ---
 const api = createApi(bot);
 const server = api.listen(config.PORT, () => {
-  console.log(`Afina API listening on port ${config.PORT} (mode=${config.MODE})`);
+  console.log(`Athena API listening on port ${config.PORT} (mode=${config.MODE})`);
 });
 
 // --- Startup notification ---

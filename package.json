@@ -1,5 +1,5 @@
 {
-  "name": "afina-bot",
+  "name": "athena-bot",
   "version": "1.0.0",
   "description": "Morning digest Telegram bot: weather, calendar, Vercel stats, Supabase profiles",
   "main": "dist/index.js",

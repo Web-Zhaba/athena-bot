@@ -12,7 +12,11 @@ const oauth2Client = new google.auth.OAuth2(
   REDIRECT_URI
 );
 
-const SCOPES = ['https://www.googleapis.com/auth/calendar.readonly'];
+const SCOPES = [
+  'https://www.googleapis.com/auth/calendar.readonly',
+  'https://www.googleapis.com/auth/analytics.readonly',
+  'https://www.googleapis.com/auth/userinfo.email'
+];
 
 const authUrl = oauth2Client.generateAuthUrl({
   access_type: 'offline',

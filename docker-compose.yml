@@ -1,14 +1,14 @@
 services:
-  afina-bot:
+  athena-bot:
     build:
       context: .
       dockerfile: Dockerfile
-    container_name: afina-bot
+    container_name: athena-bot
     restart: unless-stopped
     env_file:
       - .env
     environment:
-      - MODE=backend
+      - MODE=standalone
       - PORT=3000
     volumes:
       - ./data:/app/data

@@ -14,9 +14,7 @@ const envSchema = z.object({
   GOOGLE_CLIENT_SECRET: z.string().min(1, 'GOOGLE_CLIENT_SECRET is required'),
   GOOGLE_REFRESH_TOKEN: z.string().min(1, 'GOOGLE_REFRESH_TOKEN is required'),
 
-  VERCEL_TOKEN: z.string().min(1, 'VERCEL_TOKEN is required'),
-  VERCEL_PROJECT_ID: z.string().min(1, 'VERCEL_PROJECT_ID is required'),
-  VERCEL_TEAM_ID: z.string().optional(),
+
 
   SUPABASE_URL: z.string().url(),
   SUPABASE_SERVICE_KEY: z.string().min(1, 'SUPABASE_SERVICE_KEY is required'),

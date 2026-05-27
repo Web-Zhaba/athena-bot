@@ -6,14 +6,29 @@ let auth: any = null;
 
 function getAuth() {
   if (auth) return auth;
-  if (!config.GA4_SERVICE_ACCOUNT_PATH || !fs.existsSync(config.GA4_SERVICE_ACCOUNT_PATH)) {
-    throw new Error('GA4 service account key not found');
+  
+  // 1. Try Service Account if configured and file exists
+  if (config.GA4_SERVICE_ACCOUNT_PATH && fs.existsSync(config.GA4_SERVICE_ACCOUNT_PATH)) {
+    const keyFile = JSON.parse(fs.readFileSync(config.GA4_SERVICE_ACCOUNT_PATH, 'utf-8'));
+    auth = new google.auth.GoogleAuth({
+      credentials: keyFile,
+      scopes: ['https://www.googleapis.com/auth/analytics.readonly'],
+    });
+    return auth;
   }
-  const keyFile = JSON.parse(fs.readFileSync(config.GA4_SERVICE_ACCOUNT_PATH, 'utf-8'));
-  auth = new google.auth.GoogleAuth({
-    credentials: keyFile,
-    scopes: ['https://www.googleapis.com/auth/analytics.readonly'],
+
+  // 2. Fallback to User OAuth2 using calendar credentials
+  const oauth2Client = new google.auth.OAuth2(
+    config.GOOGLE_CLIENT_ID,
+    config.GOOGLE_CLIENT_SECRET,
+    'urn:ietf:wg:oauth:2.0:oob'
+  );
+
+  oauth2Client.setCredentials({
+    refresh_token: config.GOOGLE_REFRESH_TOKEN,
   });
+
+  auth = oauth2Client;
   return auth;
 }
 
@@ -24,7 +39,7 @@ interface Ga4Stats {
 }
 
 export async function getGa4Stats(): Promise<Ga4Stats | null> {
-  if (!config.GA4_PROPERTY_ID || !config.GA4_SERVICE_ACCOUNT_PATH) {
+  if (!config.GA4_PROPERTY_ID) {
     return null;
   }
 
