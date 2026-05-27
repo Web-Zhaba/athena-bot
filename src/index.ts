@@ -14,7 +14,11 @@ import { digestCommand } from './commands/digest';
 import { morningDigest } from './jobs/morningDigest';
 
 const IS_STANDALONE = config.MODE === 'standalone';
-const bot = new Telegraf(config.BOT_TOKEN);
+const bot = new Telegraf(config.BOT_TOKEN, config.TELEGRAM_API_ROOT ? {
+  telegram: {
+    apiRoot: config.TELEGRAM_API_ROOT,
+  },
+} : undefined);
 
 // --- Telegram command handlers (только в standalone режиме) ---
 if (IS_STANDALONE) {

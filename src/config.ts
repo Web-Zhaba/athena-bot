@@ -31,6 +31,7 @@ const envSchema = z.object({
 
   MODE: z.enum(['standalone', 'backend']).default('standalone'),
   PORT: z.string().default('3000'),
+  TELEGRAM_API_ROOT: z.string().url().optional(),
 });
 
 const parsed = envSchema.safeParse(process.env);
