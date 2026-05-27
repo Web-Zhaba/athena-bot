@@ -12,6 +12,9 @@ import {
 import { getProfilesCount } from '../services/supabase';
 import { getGa4Stats } from '../services/ga4';
 import { getCloudflareStats } from '../services/cloudflare';
+import { getSystemMetrics } from '../services/system';
+import { getUptimeReport } from '../services/uptime';
+import { getDailyBusinessDigest } from '../services/analyst';
 
 export async function morningDigest(telegram: Telegram) {
   const now = new Date();
@@ -33,6 +36,8 @@ export async function morningDigest(telegram: Telegram) {
     getProfilesCount(),
     getGa4Stats(),
     getCloudflareStats(),
+    getSystemMetrics(),
+    getDailyBusinessDigest(),
   ]);
 
   const [
@@ -42,6 +47,8 @@ export async function morningDigest(telegram: Telegram) {
     supabaseResult,
     ga4Result,
     cfResult,
+    vpsResult,
+    businessResult,
   ] = results;
 
   // 1. Weather
@@ -95,6 +102,34 @@ export async function morningDigest(telegram: Telegram) {
     message += `─── База данных ───\n❌ Не удалось получить данные Supabase\n\n`;
   }
 
+  // 4.5. VPS Status
+  if (vpsResult.status === 'fulfilled') {
+    const v = vpsResult.value;
+    message += `─── VPS Сервер ───\n` +
+               `🧠 RAM: ${v.ramUsedGb} / ${v.ramTotalGb} ГБ (${v.ramPercentage}%)\n` +
+               `💾 SSD: ${v.diskFreeGb} ГБ своб. (${v.diskUsedPercentage}% занято)\n` +
+               `⚡ Load: ${v.cpuLoad.join(', ')}\n\n`;
+  } else {
+    console.error('Digest VPS metrics error:', vpsResult.reason);
+    message += `─── VPS Сервер ───\n❌ Не удалось получить метрики сервера\n\n`;
+  }
+
+  // 4.7. Uptime Monitoring
+  const monitoredUrls = (config.MONITORED_URLS || '')
+    .split(',')
+    .map((u) => u.trim())
+    .filter(Boolean);
+
+  if (monitoredUrls.length > 0) {
+    try {
+      const uptimeReport = await getUptimeReport(monitoredUrls);
+      message += `─── Мониторинг сайтов ───\n${uptimeReport}\n\n`;
+    } catch (e) {
+      console.error('Digest uptime report error:', e);
+      message += `─── Мониторинг сайтов ───\n❌ Не удалось получить статус сайтов\n\n`;
+    }
+  }
+
   // 5. Analytics
   const analyticsParts: string[] = [];
   if (ga4Result.status === 'fulfilled' && ga4Result.value) {
@@ -115,6 +150,13 @@ export async function morningDigest(telegram: Telegram) {
     message += `─── Аналитика сайта ───\n` + analyticsParts.join('\n');
   } else {
     message += `─── Аналитика сайта ───\nℹ️ Данные недоступны. Настройте GA4 или Cloudflare.`;
+  }
+
+  // 5.1. Business AI Analyst Report
+  if (businessResult.status === 'fulfilled' && businessResult.value) {
+    message += `\n\n─── ИИ Бизнес-Анализ ───\n${businessResult.value}`;
+  } else if (businessResult.status === 'rejected') {
+    console.error('Digest business analysis error:', businessResult.reason);
   }
 
   const parts = splitMessage(message);

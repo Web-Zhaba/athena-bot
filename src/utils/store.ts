@@ -10,6 +10,9 @@ interface StoreData {
   lastDigestTimestamp?: string;
   lastHeartbeatTimestamp?: string;
   defaultCity?: string;
+  uptimeStates?: Record<string, { isUp: boolean; offlineSince?: string }>;
+  lastBackupTimestamp?: string;
+  backupMissedAlertSent?: boolean;
 }
 
 function readStore(): StoreData {

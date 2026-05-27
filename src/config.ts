@@ -26,8 +26,17 @@ const envSchema = z.object({
   GA4_PROPERTY_ID: z.string().optional(),
   GA4_SERVICE_ACCOUNT_PATH: z.string().optional(),
 
+  GEMINI_API_KEY: z.string().optional(),
+  GEMINI_API_BASE_URL: z.string().optional(),
+  GROQ_API_KEY: z.string().optional(),
+  OPENROUTER_API_KEY: z.string().optional(),
+
   CF_API_TOKEN: z.string().optional(),
   CF_ZONE_ID: z.string().optional(),
+
+  MONITORED_URLS: z.string().optional(),
+
+  WEBHOOK_TOKEN: z.string().default('athena-secure-webhook-token-change-me'),
 
   MODE: z.enum(['standalone', 'backend']).default('standalone'),
   PORT: z.string().default('3000'),

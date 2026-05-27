@@ -70,3 +70,88 @@ export async function getGa4Stats(): Promise<Ga4Stats | null> {
     sessions: parseInt(values[2]?.value ?? '0', 10),
   };
 }
+
+export interface Ga4YesterdayDetails {
+  activeUsers: number;
+  pageViews: number;
+  sessions: number;
+  topPages: { path: string; views: number }[];
+  topCountries: { country: string; users: number }[];
+}
+
+export async function getGa4YesterdayDetails(): Promise<Ga4YesterdayDetails | null> {
+  if (!config.GA4_PROPERTY_ID) {
+    return null;
+  }
+
+  try {
+    const analytics = google.analyticsdata({ version: 'v1beta', auth: getAuth() });
+    
+    // Получаем дату вчерашнего дня
+    const yesterday = new Date();
+    yesterday.setDate(yesterday.getDate() - 1);
+    const yesterdayIso = yesterday.toISOString().split('T')[0];
+
+    // 1. Запрос основных метрик за вчера
+    const summaryResponse = await analytics.properties.runReport({
+      property: `properties/${config.GA4_PROPERTY_ID}`,
+      requestBody: {
+        dateRanges: [{ startDate: yesterdayIso, endDate: yesterdayIso }],
+        metrics: [
+          { name: 'activeUsers' },
+          { name: 'screenPageViews' },
+          { name: 'sessions' },
+        ],
+      },
+    }) as any;
+
+    const summaryRow = summaryResponse.data.rows?.[0];
+    const summaryValues = summaryRow?.metricValues ?? [];
+    const activeUsers = parseInt(summaryValues[0]?.value ?? '0', 10);
+    const pageViews = parseInt(summaryValues[1]?.value ?? '0', 10);
+    const sessions = parseInt(summaryValues[2]?.value ?? '0', 10);
+
+    // 2. Запрос популярных страниц за вчера
+    const pagesResponse = await analytics.properties.runReport({
+      property: `properties/${config.GA4_PROPERTY_ID}`,
+      requestBody: {
+        dateRanges: [{ startDate: yesterdayIso, endDate: yesterdayIso }],
+        dimensions: [{ name: 'pagePath' }],
+        metrics: [{ name: 'screenPageViews' }],
+        limit: '5',
+      },
+    }) as any;
+
+    const topPages = (pagesResponse.data.rows ?? []).map((row: any) => ({
+      path: row.dimensionValues?.[0]?.value ?? 'Unknown',
+      views: parseInt(row.metricValues?.[0]?.value ?? '0', 10),
+    }));
+
+    // 3. Запрос стран пользователей за вчера
+    const countriesResponse = await analytics.properties.runReport({
+      property: `properties/${config.GA4_PROPERTY_ID}`,
+      requestBody: {
+        dateRanges: [{ startDate: yesterdayIso, endDate: yesterdayIso }],
+        dimensions: [{ name: 'country' }],
+        metrics: [{ name: 'activeUsers' }],
+        limit: '3',
+      },
+    }) as any;
+
+    const topCountries = (countriesResponse.data.rows ?? []).map((row: any) => ({
+      country: row.dimensionValues?.[0]?.value ?? 'Unknown',
+      users: parseInt(row.metricValues?.[0]?.value ?? '0', 10),
+    }));
+
+    return {
+      activeUsers,
+      pageViews,
+      sessions,
+      topPages,
+      topCountries,
+    };
+  } catch (err) {
+    console.error('Failed to fetch GA4 yesterday details:', err);
+    return null;
+  }
+}

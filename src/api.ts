@@ -2,6 +2,7 @@ import express, { Request, Response } from 'express';
 import { Telegraf } from 'telegraf';
 import { config } from './config';
 import { store } from './utils/store';
+import { paymentsDb } from './utils/paymentsDb';
 import {
   getWeather,
   formatWeather,
@@ -170,6 +171,107 @@ export function createApi(bot: Telegraf) {
       });
     } catch (err) {
       res.status(500).json({ success: false, error: 'Ошибка запуска дайджеста' });
+    }
+  });
+
+  // POST /api/webhooks/payment
+  app.post('/api/webhooks/payment', async (req: Request, res: Response) => {
+    try {
+      const token = req.headers['x-athena-token'];
+      if (token !== config.WEBHOOK_TOKEN) {
+        res.status(401).json({ success: false, error: 'Unauthorized' });
+        return;
+      }
+
+      const { project, amount, currency, email, plan, provider } = req.body;
+
+      if (!project || amount === undefined || !currency) {
+        res.status(400).json({
+          success: false,
+          error: 'Missing required fields (project, amount, currency)',
+        });
+        return;
+      }
+
+      // Сохраняем транзакцию в локальное хранилище для ИИ-анализа
+      paymentsDb.addPayment({
+        project,
+        amount: Number(amount),
+        currency,
+        email,
+        plan,
+        provider,
+      });
+
+      const emoji =
+        currency === 'RUB'
+          ? '₽'
+          : currency === 'USD'
+          ? '$'
+          : currency === 'EUR'
+          ? '€'
+          : ` ${currency}`;
+      
+      const formattedAmount = `${amount}${emoji}`;
+
+      const message =
+        `💰 *Новая оплата на проекте ${project}!* 🎉\n\n` +
+        `💵 *Сумма:* \`${formattedAmount}\`\n` +
+        `👤 *Пользователь:* \`${email || 'Не указан'}\`\n` +
+        `📦 *Тариф:* \`${plan || 'Базовый'}\`\n` +
+        `💳 *Шлюз:* \`${provider || 'Unknown'}\``;
+
+      await bot.telegram.sendMessage(config.OWNER_CHAT_ID, message, {
+        parse_mode: 'Markdown',
+      });
+
+      res.json({ success: true });
+    } catch (err) {
+      console.error('API payment webhook error:', err);
+      res.status(500).json({ success: false, error: 'Internal server error' });
+    }
+  });
+
+  // POST /api/webhooks/backup
+  app.post('/api/webhooks/backup', async (req: Request, res: Response) => {
+    try {
+      const token = req.headers['x-athena-token'];
+      if (token !== config.WEBHOOK_TOKEN) {
+        res.status(401).json({ success: false, error: 'Unauthorized' });
+        return;
+      }
+
+      const { success, error, sizeMb, project } = req.body;
+
+      if (success === undefined) {
+        res.status(400).json({ success: false, error: 'success field is required' });
+        return;
+      }
+
+      const prjName = project || 'База данных';
+
+      if (success) {
+        // Обновляем метку времени и сбрасываем алерт о пропуске
+        store.set('lastBackupTimestamp', new Date().toISOString());
+        store.set('backupMissedAlertSent', false);
+        
+        // БОТ МОЛЧИТ, ничего не шлем в Telegram. 
+        res.json({ success: true, message: 'Silence is golden. Backup registered.' });
+      } else {
+        // Ошибка бэкапа - СРАЗУ присылаем алерт!
+        const message = 
+          `⚠️ *[Резервное копирование] Ошибка бэкапа!* ❌\n\n` +
+          `📦 *Проект:* \`${prjName}\`\n` +
+          `🛠️ *Размер:* \`${sizeMb ? `${sizeMb} МБ` : 'Неизвестно'}\`\n` +
+          `❌ *Причина:* \`${error || 'Не указана'}\`\n` +
+          `⏱️ *Время:* ${new Date().toLocaleString('ru-RU', { timeZone: config.TZ })}`;
+
+        await bot.telegram.sendMessage(config.OWNER_CHAT_ID, message, { parse_mode: 'Markdown' });
+        res.json({ success: true, message: 'Alert sent' });
+      }
+    } catch (err) {
+      console.error('Backup webhook error:', err);
+      res.status(500).json({ success: false, error: 'Internal error' });
     }
   });
 
